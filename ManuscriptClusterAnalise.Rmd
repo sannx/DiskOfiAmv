@@ -1,0 +1,135 @@
+---
+title: "Extrair NDVI para os dados de Especies"
+author: "Oliveira-Santos, Claudinei"
+date: "14 de novembro de 2017"
+output: 
+  html_document: 
+    fig_caption: yes
+    fig_height: 12
+    fig_width: 12
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, cache = TRUE)
+```
+
+
+
+```{r packages, message=FALSE, warning=FALSE, echo=FALSE}
+library(ggplot2)
+require(graphics)
+library(raster)
+library(scales)
+library(reshape)
+library(reshape2)
+```
+
+
+
+```{r readData, echo=FALSE, cache=TRUE}
+pontosSpec <- read.csv('dados/csv/NDVI_Pontos_Especie_mq10.csv')
+```
+
+
+
+```{r pastID, echo=FALSE, cache=TRUE}
+ndviPastSpec <- pontosSpec[,21:417]
+ndviPastSpec <- ndviPastSpec[,339:397]
+distPontos4 <- dist(ndviPastSpec)
+```
+
+
+
+```{r pontosPastMeanCols, echo=FALSE, cache=TRUE, fig.height=9, fig.width=18, fig.align="center"}
+meanPontos3 <- colMeans(ndviPastSpec)
+sdPontos3 <- apply(ndviPastSpec, 2, FUN = sd)
+medianaPonts3 <- apply(ndviPastSpec, 2, FUN = median)
+plot(meanPontos3, t = "l", col = "black", lwd = 2, ylim = c(0,1))
+apply(ndviPastSpec, 1, FUN = lines, col = "gray")
+lines(meanPontos3 + sdPontos3, col = "red")
+lines(meanPontos3 - sdPontos3, col = "red")
+lines(meanPontos3, t = "l", col = "black", lwd = 2)
+lines(medianaPonts3, t = "l", col = "blue", lwd = 2)
+```
+
+
+
+```{r meanCols by spec sd, echo=FALSE, cache=TRUE, fig.height=9, fig.width=18, fig.align="center"}
+especies <- as.character(unique(pontosSpec$Forrageira))
+
+for(i in 1:length(especies)){
+pontosSpec_I <- pontosSpec[pontosSpec$Forrageira == especies[i], ]
+  
+#ndviPastSpec <- pontosSpec_I[,21:417]
+ndviPastSpec_I <- pontosSpec_I[,372:417]
+meanPontos3 <- colMeans(ndviPastSpec_I)
+medianaPonts3 <- apply(ndviPastSpec_I, 2, FUN = median)
+sdPontos3 <- apply(ndviPastSpec_I, 2, FUN = sd)
+plot(meanPontos3, t = "l", col = "black", lwd = 2, ylim = c(0,1), main = especies[i])
+apply(ndviPastSpec_I, 1, FUN = lines, col = "gray")
+lines(meanPontos3 + sdPontos3, col = "red")
+lines(meanPontos3 - sdPontos3, col = "red")
+lines(medianaPonts3, col = "blue")
+print(dim(ndviPastSpec_I))
+print(head(pontosSpec_I[,14:15]))
+}
+```
+
+
+```{r meanCols by spec, echo=FALSE, cache=TRUE, fig.height=9, fig.width=18, fig.align="center"}
+especies <- as.character(unique(pontosSpec$Forrageira))
+
+meanSpec <- as.data.frame(especies)
+# meanSpec[,2:398] <- NA
+meanSpec[,2:47] <- NA
+for(i in 1:length(especies)){
+pontosSpec_I <- pontosSpec[pontosSpec$Forrageira == especies[i], ]
+# ndviPastSpec_I <- pontosSpec_I[,21:417]
+ndviPastSpec_I <- pontosSpec_I[,21:66]
+meanPontos3 <- colMeans(ndviPastSpec_I)
+# meanSpec[i,2:398] <- meanPontos3
+meanSpec[i,2:47] <- meanPontos3
+}
+
+meanSpecMelt <- melt(meanSpec, value.name = "especies")
+meanSpecMelt$variable <- as.numeric(gsub("V", "", meanSpecMelt$variable))
+
+ggplot(data = meanSpecMelt, aes(x = variable, y = value, col = especies))+
+  geom_line()
+```
+
+
+
+```{r meanCols by spec facet, echo=FALSE, cache=TRUE, fig.height=18, fig.width=18, fig.align="center"}
+ggplot(data = meanSpecMelt, aes(x = variable, y = value, col = especies))+
+  geom_line() + 
+  facet_wrap(~ especies)#, nrow = 7)
+```
+
+
+
+```{r Fig2 Cluster, include=FALSE, echo=FALSE, cache=TRUE, fig.height=6, fig.width=12, fig.align="center"}
+clustPontos4 <- hclust(distPontos4, "ave")
+# plot(clustPontos4, hang = -1)
+ 
+clustPontos4 <- hclust(distPontos4, "cent")
+# plot(clustPontos4, hang = -1)
+
+memb <- cutree(clustPontos4, k = 4)
+cent <- NULL
+for(k in 1:4){
+  cent <- rbind(cent, colMeans(ndviPastSpec[memb == k, , drop = FALSE]))
+}
+hc1 <- hclust(dist(cent)^2, method = "cen", members = table(memb))
+opar <- par(mfrow = c(1, 2))
+plot(clustPontos4,  labels = FALSE, main = "Original Tree")
+plot(hc1, labels = FALSE, hang = -1, main = "Re-start from 10 clusters")
+par(opar)
+
+```
+
+
+
+```{r ndviGrupos, include=FALSE, echo=FALSE, cache=TRUE, fig.height=6, fig.width=12, fig.align="center"}
+
+```
